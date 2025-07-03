@@ -1,130 +1,149 @@
-# 🏗️ Architecture Overview
+# Infrastructure Architecture Specification
 
-This document describes the full infrastructure design and logic behind the **Semi-Automated Microservices on AWS EC2** project. The architecture enables horizontal scalability, security, and modular service deployment across multiple environments — without using traditional CI/CD tools.
-
----
-
-## 🎯 Purpose
-
-To demonstrate how a real-world, production-grade microservice-based SaaS can be hosted and scaled on AWS EC2 using infrastructure best practices — while keeping full control of deployments without any third-party automation tools like Jenkins or GitHub Actions.
+This document details the infrastructure architecture and implementation logic of the AWS EC2-based microservices deployment. The architecture enables horizontal scalability, security isolation, and modular service deployment across multiple environments without traditional CI/CD tooling dependencies.
 
 ---
 
-## 🧱 Environments
+## Architectural Intent
 
-The infrastructure is divided into **three isolated environments**:
-
-- **Test**
-- **Stage**
-- **Production**
-
-Each environment includes:
-
-- Its own ALB, security groups, and ASG per service
-- Separate subnets and routing logic
-- Git branch mapping (`test`, `stage`, `main`)
-- Custom domain/subdomain routing via Route53
+This infrastructure demonstrates production-grade microservice deployment architecture on AWS EC2, maintaining complete deployment control while adhering to cloud-native infrastructure principles and avoiding third-party automation dependencies.
 
 ---
 
-## ⚙️ Microservices
+## Environment Architecture
 
-Each service runs on its own EC2 instance (inside an ASG):
+The infrastructure implements three isolated deployment environments:
+
+- **Testing Environment**
+- **Staging Environment**
+- **Production Environment**
+
+Each environment encompasses:
+
+- Dedicated ALB configuration
+- Environment-specific security groups
+- Service-specific Auto Scaling Groups
+- Isolated subnet architecture
+- Environment-mapped Git branches
+- Route53-managed domain configuration
+
+---
+
+## Service Architecture
+
+Each service operates within its dedicated EC2 instance, managed by an Auto Scaling Group:
 
 1. `Admin Panel (React)`
 2. `Auth Service`
 3. `Gmail Service`
 4. `Calendar Service`
-5. `MCP (Main Controller)`
+5. `MCP (Master Control Program)`
 6. `AI Proxy`
 7. `Reminder Service`
 8. `Telegram Bot`
 
-**Each EC2 is independently scalable** via its Auto Scaling Group, using CPU metrics or request-based scaling policies.
+Each compute unit maintains independent scaling policies based on service-specific metrics.
 
 ---
 
-## 🌐 Networking Design
+## Network Architecture
 
-- **1 VPC** with segregated subnets per environment
-- **Public subnets** for ALBs and NAT
-- **Private subnets** for EC2 services
-- **Internet Gateway** for inbound access
-- **NAT Gateway** for EC2 outbound communication
+- **VPC Configuration**: Environment-segregated subnets
+- **Public Subnet Layer**: ALB and NAT infrastructure
+- **Private Subnet Layer**: Service compute instances
+- **Internet Gateway**: Inbound traffic management
+- **NAT Gateway**: Outbound compute communication
 
 ---
 
-## 🔐 Security
+## Security Architecture
 
-- **Security Groups**:
-  - ALB → EC2 (via specific port rules)
-  - EC2 → MongoDB (private access only)
-- **IAM Roles**:
-  - Per-service permissions
-  - Least-privilege model
-- **Secrets Manager**:
-  - GitHub token for private repo pulls
+### Access Control Framework
+
+- **Security Group Configuration**:
+  - ALB → EC2 (port-specific routing)
+  - EC2 → MongoDB (VPC-scoped access)
+- **IAM Framework**:
+  - Service-specific role assignments
+  - Least-privilege access model
+- **Secrets Management**:
+  - GitHub authentication tokens
   - MongoDB connection strings
-  - OpenAI / Ollama API keys
+  - External API credentials
 
 ---
 
-## 📦 Deployment Flow
+## Deployment Architecture
 
-Each environment maps to a GitHub branch:
-- `test` → Test environment
-- `stage` → Stage environment
+Environment-to-Branch Mapping:
+- `test` → Testing environment
+- `stage` → Staging environment
 - `main` → Production environment
 
-### Deployment Strategy:
+### Deployment Protocol
 
-- EC2 instances are launched with a **Launch Template** that includes a **User Data script**
-- That script:
-  - Pulls code from GitHub (branch-based)
-  - Installs dependencies
-  - Uses environment variables pulled from Secrets Manager
-- When deploying updates:
-  - Build new AMI (optional)
-  - Replace EC2 via ASG refresh OR manually terminate instance
+- EC2 provisioning via Launch Template configuration
+- Instance initialization sequence:
+  - GitHub repository synchronization
+  - Dependency resolution
+  - Environment configuration injection
+- Deployment execution:
+  - AMI version control (optional)
+  - ASG-managed instance rotation
 
-> ❗ No Jenkins or CI/CD tools are used — this is a semi-automated, fully controlled manual deployment process.
-
----
-
-## 📊 Monitoring & Scaling
-
-- **Horizontal Auto Scaling** for each service based on:
-  - CPUUtilization
-  - RequestCountPerTarget (via ALB)
-- **CloudWatch** monitors all EC2 and ASG metrics
-- **MongoDB** is monitored separately (self-hosted or via external tools)
+> Note: This architecture deliberately excludes CI/CD automation to maintain deployment control.
 
 ---
 
-## 🧠 Request & Service Routing
+## Monitoring Architecture
 
-1. **User** interacts with Telegram bot
-2. **Telegram Service** triggers MCP (controller)
-3. **MCP** uses AI Proxy to understand intent
-4. **MCP** routes to the correct service (e.g., Gmail or Calendar)
-5. **Service** communicates with MongoDB and responds
-6. **Reminder & Gmail services** also run background workers
-
----
-
-## 💽 Database
-
-- A shared **MongoDB** EC2 instance is used across all services
-- Auto snapshot backup (can integrate with S3)
-- Accessible only via internal network
+- **Horizontal Scaling**: Service-specific metrics
+  - CPU utilization thresholds
+  - ALB request metrics
+- **CloudWatch Integration**: EC2 and ASG telemetry
+- **MongoDB Monitoring**: Independent metric collection
 
 ---
 
-## 🛡️ Load Balancing
+## Request Flow Architecture
 
-Each environment has its own **Application Load Balancer** (ALB):
+1. **User Interaction**: Telegram interface
+2. **Request Processing**: Telegram service → MCP
+3. **Intent Analysis**: MCP → AI Proxy
+4. **Service Routing**: MCP → Target Service
+5. **Data Operations**: Service ↔ MongoDB
+6. **Background Processing**: Reminder and Gmail services
 
-- ALB handles SSL termination and request routing
-- ALB forwards based on path to corresponding microservice ASG
+---
 
-Example:
+## Data Architecture
+
+- **MongoDB Deployment**: Shared compute instance
+- **Backup Protocol**: Automated snapshot management
+- **Access Control**: VPC-scoped connectivity
+
+---
+
+## Load Distribution Architecture
+
+Environment-specific Application Load Balancers:
+
+- SSL termination handling
+- Service-based request routing
+- Health check management
+
+Example Configuration:
+```hcl
+listener_rule {
+  priority = 100
+  action {
+    type = "forward"
+    target_group_arn = aws_lb_target_group.auth_service.arn
+  }
+  condition {
+    path_pattern {
+      values = ["/auth/*"]
+    }
+  }
+}
+```

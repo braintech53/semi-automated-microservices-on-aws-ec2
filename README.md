@@ -1,175 +1,176 @@
-# 🧱 Production-Grade Microservices Infrastructure on AWS EC2 (Horizontally Scalable)
+# Production-Grade Microservices Infrastructure on AWS EC2
 
-This repository presents a fully modular, horizontally scalable, microservice-based infrastructure built on **AWS EC2**, with **native autoscaling**, **secure secrets management**, and **environmental separation** — implemented **without using any DevOps tooling like Jenkins, GitHub Actions, or Terraform**.
+This repository demonstrates a production-ready, horizontally scalable microservice architecture implemented on AWS EC2. The infrastructure leverages native AWS autoscaling capabilities, implements robust secrets management, and maintains strict environmental isolation—all without external DevOps tooling dependencies.
 
-It is designed as a **practical cloud-native deployment model** where infrastructure decisions follow operational simplicity, cost efficiency, and system modularity.
-
----
-
-## 🎯 Objective
-
-The goal of this setup is to demonstrate **how to build a cloud-native, production-grade system architecture** using nothing but **AWS core services** — no IaC, no CI/CD pipelines.
-
-This project aims to show:
-
-- How multiple microservices can be isolated, scaled, and deployed independently  
-- How credentials and environments can be managed securely  
-- How to maintain a smooth deployment flow using branch strategies  
-- How to reduce dependency on automation by leveraging AWS-native behaviors
+The architecture prioritizes operational efficiency through strategic infrastructure decisions that optimize for modularity and cost-effectiveness.
 
 ---
 
-## ⚙️ System Overview
+## Infrastructure Objectives
 
-This project powers a multi-microservice SaaS-style application. Each microservice is deployed in its own EC2 instance group with independent scaling policies, while shared services like the database and ALB provide centralized functionality.
+This infrastructure blueprint demonstrates the implementation of a production-grade cloud architecture using AWS core services, deliberately avoiding external CI/CD and IaC tooling to showcase fundamental cloud-native principles.
 
-### Components
+Key architectural aspects:
 
-| Category              | Tools / Services |
-|-----------------------|------------------|
-| Compute               | EC2 (per service) |
-| Scaling               | Auto Scaling Groups (per microservice) |
-| Load Balancing        | AWS ALB |
-| Secrets Management    | AWS Secrets Manager |
-| Environment Control   | Branch-based deployment: `test`, `stage`, `prod` |
-| Database              | MongoDB (self-hosted on EC2, shared) |
-| Frontend              | React-based admin panel |
-| Process Management    | PM2 for Node.js services |
-| Source Control        | GitHub (multi-branch strategy)
+- Independent microservice deployment and scaling mechanisms
+- Secure credentials and environment management protocols
+- Streamlined deployment workflow utilizing branch-based strategies
+- AWS-native service orchestration minimizing external automation dependencies
 
 ---
 
-## 🧩 Microservice Structure
+## System Architecture
 
-| Service              | Purpose |
-|----------------------|---------|
-| `auth-service`       | Authentication & session management |
-| `gmail-service`      | Gmail API and webhook integration |
-| `calendar-service`   | Google Calendar sync |
-| `reminder-service`   | Scheduled jobs & triggers |
-| `telegram-bot`       | Telegram entry point (Webhook) |
-| `mcp-service`        | Message router and tool selector |
-| `ai-proxy-service`   | AI model connector (OpenAI, Ollama, etc.) |
-| `admin-panel`        | Admin UI (React frontend) |
-| `mongodb`            | Central database (shared)
+The infrastructure supports a distributed microservice ecosystem where each service operates within isolated EC2 instance groups, governed by independent scaling policies. Shared components like databases and load balancers provide centralized functionality.
 
-Each of the above services is deployed on a **dedicated EC2 instance (or ASG)**, and scaled **independently** based on usage and CPU thresholds.
+### Core Components
+
+| Component            | Implementation |
+|---------------------|----------------|
+| Compute Layer       | EC2 (service-specific) |
+| Scaling Framework   | Auto Scaling Groups (per-service) |
+| Load Distribution   | AWS ALB |
+| Secrets Management  | AWS Secrets Manager |
+| Environment Control | Branch-based deployment (test/stage/prod) |
+| Data Layer          | MongoDB (EC2-hosted, shared) |
+| Frontend Layer      | React-based admin interface |
+| Process Management  | PM2 for Node.js runtime |
+| Version Control     | GitHub (multi-branch strategy) |
 
 ---
 
-## 🔄 Deployment Process
+## Service Architecture
 
-Deployment follows a **manual, controlled, and predictable** flow using Git branches and EC2 instance refreshes:
+| Service Component   | Functional Domain |
+|--------------------|-------------------|
+| `auth-service`     | Authentication and session orchestration |
+| `gmail-service`    | Gmail API integration and webhook handling |
+| `calendar-service` | Google Calendar synchronization |
+| `reminder-service` | Scheduled task execution |
+| `telegram-bot`     | Telegram webhook endpoint |
+| `mcp-service`      | Message routing and tool orchestration |
+| `ai-proxy-service` | AI model integration layer |
+| `admin-panel`      | Administrative interface |
+| `mongodb`          | Centralized data store |
 
-1. Code is pushed to one of the 3 branches:
-   - `test` → test environment
+Each service operates within a dedicated EC2 instance or Auto Scaling Group, with independent scaling thresholds based on service-specific metrics.
+
+---
+
+## Deployment Architecture
+
+The deployment workflow follows a deterministic, branch-based strategy:
+
+1. Code deployment paths:
+   - `test` → testing environment
    - `stage` → staging environment
    - `main` → production environment
 
-2. The AWS engineer:
-   - Terminates existing EC2 instances
-   - New EC2s are spawned automatically via ASG
-   - Instance bootstraps via **User Data**:
-     - Pulls specific branch from GitHub
-     - Loads environment variables from Secrets Manager
-     - Installs dependencies & starts process with PM2
+2. Deployment protocol:
+   - Controlled EC2 instance termination
+   - ASG-triggered instance provisioning
+   - Instance initialization sequence:
+     - GitHub repository synchronization
+     - Secrets Manager credential injection
+     - Dependency resolution
+     - PM2-managed process initialization
 
-📌 Deployment is secure, consistent, and isolated — with **zero hardcoded secrets**.
+This architecture ensures deployment consistency and security through complete isolation of credentials.
 
-📄 See [`deployment-strategy.md`](./deployment-strategy.md) for the full deployment flow.
+📄 Detailed deployment specifications: [`deployment-strategy.md`](./deployment-strategy.md)
 
 ---
 
-## 🛠️ Architecture Overview
+## Infrastructure Topology
 
-A high-level diagram showing the modular deployment and communication paths is included below:
+The system's modular architecture and communication pathways are illustrated below:
 
 > ![Architecture Diagram](./diagram-architecture.png)
 
-📄 Full breakdown available in [`architecture.md`](./architecture.md)
+📄 Comprehensive architecture documentation: [`architecture.md`](./architecture.md)
 
 ---
 
-## 📈 Autoscaling Model
+## Scaling Architecture
 
-- Each microservice has its own **Auto Scaling Group**
-- Scaling is based on **CPU thresholds** or **network traffic**
-- MongoDB can also be scaled via replica sets (planned extension)
-- All instances are monitored and automatically replaced as needed
+- Service-specific Auto Scaling Groups
+- CPU and network metrics-driven scaling
+- MongoDB horizontal scaling capability
+- Automated instance health management
 
-📄 See [`autoscaling.md`](./autoscaling.md) for ASG config and lifecycle flow
-
----
-
-## 🔒 Security Considerations
-
-This system includes the following controls:
-
-- All EC2 instances are in **private subnets**
-- Public traffic is routed via **AWS ALB**
-- No inbound access to EC2s except through ALB
-- All secrets (API keys, DB URIs, GitHub tokens) stored in **Secrets Manager**
-- IAM roles grant scoped access to each EC2 group
-- MongoDB access is IP/firewall restricted within VPC
-
-📄 See [`security.md`](./security.md) for complete design
+📄 Scaling specifications: [`autoscaling.md`](./autoscaling.md)
 
 ---
 
-## 🌐 Branch-to-Environment Mapping
+## Security Architecture
 
-| Git Branch | AWS Environment | Purpose |
-|------------|------------------|---------|
-| `test`     | Test environment | Dev + smoke testing |
-| `stage`    | Staging          | Pre-production verification |
-| `main`     | Production       | Live deployment environment |
+Implemented security controls:
 
-Each environment has its own EC2 setup, Secrets config, and ALB rules.
+- Private subnet EC2 deployment
+- ALB-mediated public traffic
+- Restricted EC2 access patterns
+- AWS Secrets Manager credential isolation
+- Granular IAM role assignments
+- VPC-scoped MongoDB access control
 
----
-
-## 🧰 System Features Summary
-
-- ✅ Horizontal auto scaling for each microservice
-- ✅ Deployment versioning using Git branches
-- ✅ Secure credential handling with AWS Secrets Manager
-- ✅ Shared MongoDB database with restricted access
-- ✅ Single responsibility per EC2 instance
-- ✅ Modular and loosely coupled services
-- ✅ Load-balanced architecture with private subnet isolation
-- ✅ Clean fallback and rollback by EC2 group rotation
+📄 Security specifications: [`security.md`](./security.md)
 
 ---
 
-## 📁 Documentation Index
+## Environment Architecture
 
-| File | Description |
-|------|-------------|
-| `architecture.md`        | System diagram and cloud architecture reasoning |
-| `deployment-strategy.md` | Environment control via Git branches |
-| `autoscaling.md`         | Scaling policies, triggers, and fallback behavior |
-| `security.md`            | IAM roles, Secrets Manager usage, subnet rules |
-| `microservices.md`       | Description of each service |
-| `user-data-script.md`    | Instance provisioning and boot logic |
-| `sops.md`                | Step-by-step runbook for operations |
-| `diagram-architecture.drawio.json` | Editable diagram source |
-| `env-example.md`         | Environment key reference |
+| Branch | Environment | Purpose |
+|--------|-------------|----------|
+| `test` | Testing     | Development validation |
+| `stage`| Staging     | Pre-production verification |
+| `main` | Production  | Production deployment |
+
+Each environment maintains isolated EC2 resources, Secrets Manager configurations, and ALB routing rules.
 
 ---
 
-## 📌 Notes
+## Core Capabilities
 
-This project is structured to simulate a **fully operational deployment pipeline** using only core AWS services. It offers a foundation that can be extended into:
-
-- CI/CD tools (e.g., GitHub Actions, Jenkins)
-- Infrastructure-as-Code (e.g., Terraform, Pulumi)
-- Monitoring/Alerting (e.g., CloudWatch, Prometheus)
-- Cost optimizations and predictive scaling
-
-The current implementation is **manual by design**, in order to demonstrate operational decision-making without relying on external tools.
+- ✅ Service-specific horizontal scaling
+- ✅ Git-based deployment versioning
+- ✅ AWS Secrets Manager integration
+- ✅ Centralized MongoDB architecture
+- ✅ Single-responsibility compute instances
+- ✅ Service isolation principles
+- ✅ ALB-managed traffic distribution
+- ✅ ASG-based instance lifecycle management
 
 ---
 
-## 📎 License
+## Documentation Index
 
-MIT (You can change this as needed)
+| Document | Scope |
+|----------|--------|
+| `architecture.md`        | System topology and design rationale |
+| `deployment-strategy.md` | Branch-based environment management |
+| `autoscaling.md`        | Scaling policies and failover protocols |
+| `security.md`           | IAM framework and security controls |
+| `microservices.md`      | Service specifications |
+| `user-data-script.md`   | Instance initialization protocols |
+| `sops.md`               | Operational procedures |
+| `diagram-architecture.drawio.json` | Infrastructure diagram source |
+| `env-example.md`        | Environment configuration reference |
+
+---
+
+## Implementation Notes
+
+This infrastructure demonstrates a production-ready deployment architecture using AWS core services. The framework provides a foundation for future enhancement through:
+
+- CI/CD integration
+- Infrastructure-as-Code implementation
+- Advanced monitoring integration
+- Cost optimization strategies
+
+The current implementation maintains manual control to demonstrate infrastructure management principles without external tooling dependencies.
+
+---
+
+## License
+
+MIT
